@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#3498db">
+  <title>Водный баланс</title>
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 16px;
+      padding-bottom: env(safe-area-inset-bottom);
+      color: #333;
+    }
+
+    .container {
+      background: #fff;
+      border-radius: 24px;
+      padding: 24px;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      height: fit-content;
+      display: none;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin-bottom: 4px;
+      color: #2c3e50;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      font-size: 13px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .profiles-container {
+      display: flex;
+      flex-direction: row;
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 650px) {
+      .profiles-container {
+        flex-direction: column;
+      }
+    }
+
+    .profile-card {
+      background: #f8f9fa;
+      border-radius: 20px;
+      padding: 16px;
+      text-align: center;
+      border: 2px solid #ecf0f1;
+      transition: border 0.3s, transform 0.2s;
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+    }
+
+    .profile-card:hover {
+      border-color: #3498db;
+      transform: translateY(-2px);
+    }
+
+    .profile-card:active {
+      transform: scale(0.98);
+    }
+
+    .profile-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 12px;
+    }
+
+    .glass-container {
+      position: relative;
+      width: 100px;
+      height: 130px;
+      margin: 0 auto 16px;
+      border: 5px solid #3498db;
+      border-top: none;
+      border-radius: 0 0 25px 25px;
+      overflow: hidden;
+      background: #f0f8ff;
+    }
+
+    .water {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 0%;
+      background: linear-gradient(180deg, #5dade2, #2e86c1);
+      transition: height 0.5s ease;
+    }
+
+    .water::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: -50%;
+      width: 200%;
+      height: 12px;
+      background: #5dade2;
+      border-radius: 50%;
+      animation: wave 3s infinite ease-in-out;
+    }
+
+    @keyframes wave {
+      0% {
+        transform: translateX(0) scaleY(1);
+      }
+
+      50% {
+        transform: translateX(-10%) scaleY(0.6);
+      }
+
+      100% {
+        transform: translateX(0) scaleY(1);
+      }
+    }
+
+    .percent {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 22px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+      z-index: 2;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 16px;
+    }
+
+    .stat .value {
+      font-size: 16px;
+      font-weight: bold;
+      color: #3498db;
+    }
+
+    .stat .label {
+      font-size: 10px;
+      color: #7f8c8d;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .btn {
+      padding: 8px 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .btn-add {
+      color: #fff;
+      flex: 1;
+    }
+
+    .btn-reset {
+      background: #ecf0f1;
+      color: #7f8c8d;
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+
+    .goal-input {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #7f8c8d;
+    }
+
+    .goal-input input {
+      width: 60px;
+      padding: 6px;
+      border: 2px solid #ecf0f1;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .calc-btn {
+      background: #8e44ad;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 10px;
+      width: 100%;
+      font-weight: bold;
+    }
+
+    .calc-btn:hover {
+      background: #732d91;
+    }
+
+    .settings-panel {
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      text-align: left;
+    }
+
+    .settings-panel label {
+      display: block;
+      font-size: 12px;
+      color: #7f8c8d;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .settings-panel input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #ecf0f1;
+      border-radius: 8px;
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+
+    .settings-panel input:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+
+    .status {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      background: #fdf2e9;
+      color: #e67e22;
+      text-align: center;
+    }
+
+    .status.on {
+      background: #eafaf1;
+      color: #27ae60;
+    }
+
+    .btn-green {
+      background: #27ae60;
+      color: #fff;
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      margin-top: 10px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-green:hover {
+      background: #229954;
+    }
+
+    .btn-stop {
+      background: #e74c3c;
+      color: #fff;
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      margin-top: 10px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-stop:hover {
+      background: #c0392b;
+    }
+
+    .goal-reached {
+      border-color: #27ae60 !important;
+      background: #d4edda;
+    }
+
+    @keyframes pulse {
+      from {
+        transform: scale(1);
+      }
+
+      to {
+        transform: scale(1.02);
+      }
+    }
+
+    .goal-reached .percent {
+      animation: pulse 1s infinite alternate;
+    }
+
+    /* ===== МОДАЛЬНОЕ ОКНО СТАТИСТИКИ ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .modal-content {
+      background: #fff;
+      border-radius: 24px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      position: relative;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #bdc3c7;
+      cursor: pointer;
+      transition: color 0.2s;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: #e74c3c;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .modal-chart-container {
+      background: #f8f9fa;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .modal-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .modal-stat-box {
+      background: #eaf4fd;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .modal-stat-box .val {
+      font-size: 18px;
+      font-weight: bold;
+      color: #2980b9;
+    }
+
+    .modal-stat-box .lbl {
+      font-size: 11px;
+      color: #7f8c8d;
+      margin-top: 4px;
+    }
+
+    .modal-list {
+      max-height: 180px;
+      overflow-y: auto;
+      border-top: 1px solid #eee;
+      padding-top: 12px;
+    }
+
+    .modal-list-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+      color: #34495e;
+    }
+
+    .modal-list-item:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Экран загрузки -->
+  <div id="loadingScreen"
+    style="display: flex; position: fixed; top:0; left:0; width:100%; height:100%; background: #667eea; z-index: 9999; justify-content: center; align-items: center; flex-direction: column; color: white;">
+    <div style="font-size: 50px; margin-bottom: 20px; animation: pulse 1.5s infinite alternate;">💧</div>
+    <h2 style="font-size: 24px; font-weight: normal;">Загружаем ваш водный баланс...</h2>
+  </div>
+  <!-- Экран авторизации -->
+  <div id="authScreen"
+    style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: #667eea; z-index: 10000; justify-content: center; align-items: center; flex-direction: column; color: white; text-align: center; padding: 20px;">
+    <h2>💧 Водный баланс</h2>
+    <p style="margin-bottom: 20px;">Войдите, чтобы синхронизировать данные</p>
+    <button id="googleLoginBtn"
+      style="background: white; color: #333; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px;">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18">
+      Войти через Google
+    </button>
+    <p id="authError" style="color: #ffcccc; margin-top: 15px; font-size: 14px;"></p>
+  </div>
+  <div class="container">
+    <h1>💧 Водный баланс</h1>
+    <p class="subtitle">Следите за водным балансом всей семьи</p>
+
+    <div class="profiles-container" id="profilesContainer"></div>
+
+    <div class="settings-panel">
+      <label>Напоминание каждые (минут)</label>
+      <input type="number" id="intervalInput" value="60" min="15" step="5">
+
+      <label>Время работы напоминаний</label>
+      <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+        <div style="flex: 1;"><input type="time" id="startTimeInput" value="08:00" style="margin-bottom: 0;"></div>
+        <div style="flex: 1;"><input type="time" id="endTimeInput" value="22:00" style="margin-bottom: 0;"></div>
+      </div>
+
+      <button class="btn-green" id="startReminders">▶ Включить напоминания</button>
+      <button class="btn-stop" id="stopReminders" style="display:none;">⏸ Остановить напоминания</button>
+      <button class="btn btn-reset" id="testNotify" style="width: 100%; margin-top: 10px;">🔔 Проверить
+        уведомление</button>
+
+      <div class="status" id="status">Напоминания выключены</div>
+    </div>
+  </div>
+
+  <!-- Модальное окно Статистики -->
+  <div class="modal-overlay" id="statsModal">
+    <div class="modal-content">
+      <div class="modal-close" id="closeModal">✖</div>
+      <div class="modal-title" id="modalTitle">Статистика</div>
+
+      <div class="modal-chart-container">
+        <canvas id="modalChart" style="width: 100%; height: 120px;"></canvas>
+      </div>
+
+      <div class="modal-stats-grid">
+        <div class="modal-stat-box">
+          <div class="val" id="modalStreak">0</div>
+          <div class="lbl">🔥 Дней подряд</div>
+        </div>
+        <div class="modal-stat-box">
+          <div class="val" id="modalAvg">0 мл</div>
+          <div class="lbl">📊 В среднем</div>
+        </div>
+      </div>
+
+      <div class="modal-list" id="modalHistoryList"></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/13.1.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/13.1.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const defaultState = {
+      profiles: {
+        "Кузя": { drunk: 0, goal: 2000, history: {} },
+        "Валюша": { drunk: 0, goal: 2000, history: {} }
+      },
+      settings: { interval: 60, startTime: '08:00', endTime: '22:00' }
+    };
+
+    let state = JSON.parse(JSON.stringify(defaultState));
+    let reminderInterval = null;
+
+    // --- Инициализация Firebase ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyBh4Govgd_0rbBHoAmJICpaCsN5EGETkGk",
+      authDomain: "waterapp-688ef.firebaseapp.com",
+      projectId: "waterapp-688ef",
+      storageBucket: "waterapp-688ef.firebasestorage.app",
+      messagingSenderId: "879796253170",
+      appId: "1:879796253170:web:10ae82a3e82455efe73b6b"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    // -----------------------------
+
+    function playSound() {
+      try {
+        const audio = document.getElementById('notifySound');
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log('Звук заблокирован:', e));
+      } catch (e) { }
+    }
+
+    function todayKey() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    let isSyncing = false; // Защита от зацикливания
+
+    async function save() {
+      if (isSyncing) return; // Если это обновление пришло из облака, не сохраняем обратно
+
+      for (const name in state.profiles) {
+        state.profiles[name].history[todayKey()] = state.profiles[name].drunk;
+      }
+
+      const user = auth.currentUser;
+      if (user) {
+        // Пишем в Firestore в коллекцию waterApp, документ = uid пользователя
+        await db.collection('waterApp').doc(user.uid).set(state);
+      } else {
+        console.warn("Сохранение не удалось: пользователь не авторизован");
+      }
+    }
+
+    function updateUI() {
+      const container = document.getElementById('profilesContainer');
+      container.innerHTML = '';
+
+      Object.keys(state.profiles).forEach(name => {
+        const cp = state.profiles[name];
+        const pct = Math.min(100, Math.round((cp.drunk / cp.goal) * 100));
+
+        const card = document.createElement('div');
+        card.className = 'profile-card' + (pct >= 100 ? ' goal-reached' : '');
+
+        // Клик по карточке открывает статистику
+        card.onclick = (e) => {
+          // Игнорируем клик, если он по кнопке или инпуту
+          if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+          openModal(name);
+        };
+
+        card.innerHTML = `
+          <div class="profile-name">${name}</div>
+          <div class="glass-container">
+            <div class="water" style="height: ${pct}%"></div>
+            <div class="percent">${pct >= 100 ? '🎉 100%' : pct + '%'}</div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="value">${cp.drunk}</div><div class="label">мл выпито</div></div>
+            <div class="stat"><div class="value">${cp.goal}</div><div class="label">мл цель</div></div>
+            <div class="stat"><div class="value">${Math.max(0, cp.goal - cp.drunk)}</div><div class="label">мл осталось</div></div>
+          </div>
+          
+          <div class="btn-row">
+            <button class="btn btn-add" data-name="${name}" data-amount="100" style="background: #3498db; font-size: 13px; padding: 8px 4px;">💧 100</button>
+            <button class="btn btn-add" data-name="${name}" data-amount="200" style="background: #3498db; font-size: 13px; padding: 8px 4px;">💧 200</button>
+            <button class="btn btn-add" data-name="${name}" data-amount="300" style="background: #3498db; font-size: 13px; padding: 8px 4px;">💧 300</button>
+          </div>
+          
+          <div class="btn-row">
+            <button class="btn btn-add" data-name="${name}" data-action="coffee" style="background: #8e44ad; font-size: 12px; flex: 2;">☕ Кофе 200</button>
+            <button class="btn btn-add" data-name="${name}" data-action="tea" style="background: #16a085; font-size: 12px; flex: 2;">🍵 Чай 300</button>
+            <button class="btn btn-reset" data-name="${name}" data-action="reset" style="flex: 1; font-size: 12px;">Сброс</button>
+          </div>
+
+          <div class="goal-input" onclick="event.stopPropagation()">
+            Цель: <input type="number" data-name="${name}" class="goal-field" value="${cp.goal}" min="500" step="100"> мл
+          </div>
+          <button class="calc-btn" data-name="${name}" data-action="calc">📊 Рассчитать норму</button>
+        `;
+        container.appendChild(card);
+      });
+
+      // Обработчики кнопок
+      document.querySelectorAll('.btn-add[data-amount]').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const name = btn.dataset.name;
+          const amount = parseInt(btn.dataset.amount);
+          state.profiles[name].drunk += amount;
+          save(); updateUI();
+        };
+      });
+
+      document.querySelectorAll('[data-action="coffee"]').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const name = btn.dataset.name;
+          state.profiles[name].drunk += Math.round(200 * 0.8);
+          save(); updateUI();
+        };
+      });
+
+      document.querySelectorAll('[data-action="tea"]').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const name = btn.dataset.name;
+          state.profiles[name].drunk += Math.round(300 * 0.9);
+          save(); updateUI();
+        };
+      });
+
+      document.querySelectorAll('[data-action="reset"]').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const name = btn.dataset.name;
+          if (confirm(`Сбросить прогресс для "${name}"?`)) {
+            state.profiles[name].drunk = 0;
+            save(); updateUI();
+          }
+        };
+      });
+
+      document.querySelectorAll('.goal-field').forEach(input => {
+        input.onchange = (e) => {
+          const name = e.target.dataset.name;
+          const val = parseInt(e.target.value);
+          if (val >= 500) {
+            state.profiles[name].goal = val;
+            save(); updateUI();
+          }
+        };
+      });
+
+      document.querySelectorAll('[data-action="calc"]').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const name = btn.dataset.name;
+          const weightStr = prompt("Ваш вес (кг):", "70");
+          if (!weightStr) return;
+          const weight = parseFloat(weightStr);
+          if (isNaN(weight) || weight <= 0) return alert("Введите корректный вес.");
+
+          const activityStr = prompt("Уровень активности:\n1 - Сидячий\n2 - Умеренный\n3 - Высокий", "1");
+          if (!activityStr) return;
+          const act = parseInt(activityStr);
+          let coef = act === 2 ? 1.1 : (act === 3 ? 1.2 : 1.0);
+          const calcGoal = Math.round((weight * 30 * coef) / 50) * 50;
+          state.profiles[name].goal = calcGoal;
+          save(); updateUI();
+          alert(`✅ Норма для "${name}": ${calcGoal} мл`);
+        };
+      });
+    }
+
+    // === ЛОГИКА МОДАЛЬНОГО ОКНА ===
+    function openModal(name) {
+      document.getElementById('modalTitle').textContent = `Статистика: ${name}`;
+      document.getElementById('statsModal').style.display = 'flex';
+
+      const cp = state.profiles[name];
+      const history = cp.history || {};
+
+      // Считаем среднее за 7 дней
+      let sum = 0, count = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        if (history[key]) { sum += history[key]; count++; }
+      }
+      document.getElementById('modalAvg').textContent = count ? Math.round(sum / count) + ' мл' : '0 мл';
+
+      // Считаем серию дней подряд (стрик)
+      let streak = 0;
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        const val = history[key] || 0;
+        if (val >= cp.goal) streak++;
+        else if (i === 0 && val < cp.goal && val > 0) {
+          // Если сегодня еще не добил, не обрываем серию вчерашних дней
+          continue;
+        } else break;
+      }
+      document.getElementById('modalStreak').textContent = streak;
+
+      // Строим список последних дней
+      const list = document.getElementById('modalHistoryList');
+      let html = '';
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        const val = history[key] || 0;
+        const label = i === 0 ? 'Сегодня' : (i === 1 ? 'Вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }));
+        const color = val >= cp.goal ? '#27ae60' : (val > 0 ? '#3498db' : '#bdc3c7');
+        html += `<div class="modal-list-item"><span>${label}</span> <span style="color:${color}; font-weight:bold;">${val} мл</span></div>`;
+      }
+      list.innerHTML = html;
+
+      // Рисуем график
+      drawModalChart(name, history);
+    }
+
+    function closeModal() {
+      document.getElementById('statsModal').style.display = 'none';
+    }
+
+    document.getElementById('closeModal').onclick = closeModal;
+    document.getElementById('statsModal').onclick = (e) => {
+      if (e.target.id === 'statsModal') closeModal();
+    };
+
+    function drawModalChart(name, history) {
+      const canvas = document.getElementById('modalChart');
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width, H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        days.push({
+          label: d.toLocaleDateString('ru-RU', { weekday: 'short' }),
+          value: history[key] || 0
+        });
+      }
+
+      const cp = state.profiles[name];
+      const maxVal = Math.max(cp.goal, ...days.map(d => d.value), 1);
+      const chartH = H - 20;
+      const gap = W / 7;
+      const barW = gap * 0.6;
+
+      // Линия цели
+      const goalY = chartH - (cp.goal / maxVal) * chartH;
+      ctx.strokeStyle = '#e74c3c'; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(0, goalY); ctx.lineTo(W, goalY); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Столбики
+      days.forEach((d, i) => {
+        const x = i * gap + (gap - barW) / 2;
+        const h = (d.value / maxVal) * chartH;
+        const y = chartH - h;
+        ctx.fillStyle = d.value >= cp.goal ? '#27ae60' : '#3498db';
+        ctx.beginPath();
+        ctx.roundRect(x, y, barW, Math.max(h, 2), [4, 4, 0, 0]);
+        ctx.fill();
+
+        ctx.fillStyle = '#7f8c8d'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(d.label, x + barW / 2, H - 2);
+      });
+    }
+
+    // === НАПОМИНАНИЯ ===
+    document.getElementById('startReminders').onclick = async () => {
+      if (Notification.permission !== 'granted') await Notification.requestPermission();
+      if (Notification.permission !== 'granted') return alert('Разрешите уведомления!');
+
+      const minutes = parseInt(document.getElementById('intervalInput').value) || 60;
+      const startT = document.getElementById('startTimeInput').value;
+      const endT = document.getElementById('endTimeInput').value;
+
+      state.settings = { interval: minutes, startTime: startT, endTime: endT };
+      await save();
+
+      if (reminderInterval) clearInterval(reminderInterval);
+
+      reminderInterval = setInterval(() => {
+        const now = new Date();
+        const curMins = now.getHours() * 60 + now.getMinutes();
+        const [sh, sm] = startT.split(':').map(Number);
+        const [eh, em] = endT.split(':').map(Number);
+
+        if (curMins >= (sh * 60 + sm) && curMins <= (eh * 60 + em)) {
+          document.getElementById('waterPopup').style.display = 'flex';
+          playSound();
+        }
+      }, minutes * 60000);
+
+      document.getElementById('status').textContent = `✅ Напоминания каждые ${minutes} мин`;
+      document.getElementById('status').className = 'status on';
+      document.getElementById('startReminders').style.display = 'none';
+      document.getElementById('stopReminders').style.display = 'block';
+    };
+
+    document.getElementById('stopReminders').onclick = () => {
+      if (reminderInterval) clearInterval(reminderInterval);
+      reminderInterval = null;
+      document.getElementById('status').textContent = 'Напоминания выключены';
+      document.getElementById('status').className = 'status';
+      document.getElementById('startReminders').style.display = 'block';
+      document.getElementById('stopReminders').style.display = 'none';
+    };
+
+    document.getElementById('testNotify').onclick = () => {
+      document.getElementById('waterPopup').style.display = 'flex';
+      playSound();
+    };
+
+    // Инициализация и Синхронизация
+    let unsubscribeSnapshot = null;
+
+    function startSync() {
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const docRef = db.collection('waterApp').doc(user.uid);
+
+      unsubscribeSnapshot = docRef.onSnapshot((doc) => {
+        isSyncing = true;
+
+        if (doc.exists) {
+          const data = doc.data();
+          if (data && data.profiles) {
+            state = data;
+            const today = todayKey();
+            for (const name in state.profiles) {
+              const cp = state.profiles[name];
+              if (cp.history && cp.history[today] !== undefined) {
+                cp.drunk = cp.history[today];
+              }
+            }
+            if (state.settings) {
+              document.getElementById('intervalInput').value = state.settings.interval || 60;
+              document.getElementById('startTimeInput').value = state.settings.startTime || '08:00';
+              document.getElementById('endTimeInput').value = state.settings.endTime || '22:00';
+            }
+          }
+        } else {
+          // Если документа в базе ещё нет — создаём его с дефолтными данными
+          db.collection('waterApp').doc(user.uid).set(state).catch(err => {
+            console.error("Ошибка создания документа:", err);
+          });
+        }
+
+        // Всегда обновляем интерфейс
+        updateUI();
+        document.getElementById('loadingScreen').style.display = 'none'; // Скрываем загрузку
+        document.querySelector('.container').style.display = 'block';    // Показываем приложение
+        setTimeout(() => { isSyncing = false; }, 500);
+      }, (error) => {
+        console.error("Ошибка Firestore (onSnapshot):", error);
+      });
+    }
+
+    // Вызываем startSync при входе пользователя
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById('authScreen').style.display = 'none';
+        document.querySelector('.container').style.display = 'block';
+        startSync(); // <--- Запускаем синхронизацию
+      } else {
+        document.getElementById('authScreen').style.display = 'flex';
+        document.querySelector('.container').style.display = 'none';
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+      }
+    });
+
+    // Убираем старый вызов init(), так как синхронизация теперь через Firestore
+    // init();
+
+    // Слушаем состояние авторизации
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById('authScreen').style.display = 'none';
+        document.querySelector('.container').style.display = 'block';
+        console.log("Пользователь вошел:", user.email || user.displayName || user.uid);
+      } else {
+        document.getElementById('authScreen').style.display = 'flex';
+        document.querySelector('.container').style.display = 'none';
+      }
+    });
+
+    // Обработчик кнопки входа
+    document.getElementById('googleLoginBtn').onclick = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(error => {
+        document.getElementById('authError').textContent = error.message;
+        console.error("Ошибка входа:", error);
+      });
+    };
+
+    // init(); — удалено, так как теперь используется startSync() внутри auth.onAuthStateChanged
+  </script>
+
+  <audio id="notifySound" src="sound.mp3" preload="auto"></audio>
+
+  <!-- Красивое окно напоминания (Осталось прежним) -->
+  <div id="waterPopup"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+    <div
+      style="background: #fff; padding: 30px; border-radius: 20px; text-align: center; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: pulse 1s infinite alternate;">
+      <div style="font-size: 50px; margin-bottom: 10px;">💧</div>
+      <h2 style="color: #2c3e50; margin-bottom: 10px;">Пора пить воду!</h2>
+      <p style="color: #7f8c8d; margin-bottom: 20px;">Не забудьте восполнить водный баланс.</p>
+      <button onclick="document.getElementById('waterPopup').style.display='none';"
+        style="background: #3498db; color: #fff; border: none; padding: 12px 30px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%;">Я
+        выпил(а)</button>
+    </div>
+  </div>
+
+  <script>
+    // Регистрация Service Worker и авто-обновление
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          // Проверяем обновления каждые 10 минут
+          setInterval(() => reg.update(), 10 * 60 * 1000);
+        }).catch(err => console.log('SW registration failed:', err));
+
+        // Если найден новый Service Worker, перезагружаем страницу
+        let refreshing;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
+      });
+    }
+  </script>
+</body>
+
+</html>
