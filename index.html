@@ -462,6 +462,7 @@
     <div style="font-size: 50px; margin-bottom: 20px; animation: pulse 1.5s infinite alternate;">💧</div>
     <h2 style="font-size: 24px; font-weight: normal;">Загружаем ваш водный баланс...</h2>
   </div>
+
   <!-- Экран авторизации -->
   <div id="authScreen"
     style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: #667eea; z-index: 10000; justify-content: center; align-items: center; flex-direction: column; color: white; text-align: center; padding: 20px;">
@@ -474,6 +475,7 @@
     </button>
     <p id="authError" style="color: #ffcccc; margin-top: 15px; font-size: 14px;"></p>
   </div>
+
   <div class="container">
     <h1>💧 Водный баланс</h1>
     <p class="subtitle">Следите за водным балансом всей семьи</p>
@@ -534,7 +536,7 @@
         "Кузя": { drunk: 0, goal: 2000, history: {} },
         "Валюша": { drunk: 0, goal: 2000, history: {} }
       },
-      settings: { interval: 60, startTime: '08:00', endTime: '22:00' }
+      settings: { interval: 60, startTime: '08:00', endTime: '22:00', remindersEnabled: false }
     };
 
     let state = JSON.parse(JSON.stringify(defaultState));
@@ -568,10 +570,10 @@
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
-    let isSyncing = false; // Защита от зацикливания
+    let isSyncing = false;
 
     async function save() {
-      if (isSyncing) return; // Если это обновление пришло из облака, не сохраняем обратно
+      if (isSyncing) return;
 
       for (const name in state.profiles) {
         state.profiles[name].history[todayKey()] = state.profiles[name].drunk;
@@ -579,7 +581,6 @@
 
       const user = auth.currentUser;
       if (user) {
-        // Пишем в Firestore в коллекцию waterApp, документ = uid пользователя
         await db.collection('waterApp').doc(user.uid).set(state);
       } else {
         console.warn("Сохранение не удалось: пользователь не авторизован");
@@ -597,9 +598,7 @@
         const card = document.createElement('div');
         card.className = 'profile-card' + (pct >= 100 ? ' goal-reached' : '');
 
-        // Клик по карточке открывает статистику
         card.onclick = (e) => {
-          // Игнорируем клик, если он по кнопке или инпуту
           if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
           openModal(name);
         };
@@ -636,7 +635,6 @@
         container.appendChild(card);
       });
 
-      // Обработчики кнопок
       document.querySelectorAll('.btn-add[data-amount]').forEach(btn => {
         btn.onclick = (e) => {
           e.stopPropagation();
@@ -708,7 +706,6 @@
       });
     }
 
-    // === ЛОГИКА МОДАЛЬНОГО ОКНА ===
     function openModal(name) {
       document.getElementById('modalTitle').textContent = `Статистика: ${name}`;
       document.getElementById('statsModal').style.display = 'flex';
@@ -716,7 +713,6 @@
       const cp = state.profiles[name];
       const history = cp.history || {};
 
-      // Считаем среднее за 7 дней
       let sum = 0, count = 0;
       for (let i = 0; i < 7; i++) {
         const d = new Date(); d.setDate(d.getDate() - i);
@@ -725,7 +721,6 @@
       }
       document.getElementById('modalAvg').textContent = count ? Math.round(sum / count) + ' мл' : '0 мл';
 
-      // Считаем серию дней подряд (стрик)
       let streak = 0;
       for (let i = 0; i < 30; i++) {
         const d = new Date(); d.setDate(d.getDate() - i);
@@ -733,13 +728,11 @@
         const val = history[key] || 0;
         if (val >= cp.goal) streak++;
         else if (i === 0 && val < cp.goal && val > 0) {
-          // Если сегодня еще не добил, не обрываем серию вчерашних дней
           continue;
         } else break;
       }
       document.getElementById('modalStreak').textContent = streak;
 
-      // Строим список последних дней
       const list = document.getElementById('modalHistoryList');
       let html = '';
       for (let i = 0; i < 7; i++) {
@@ -752,7 +745,6 @@
       }
       list.innerHTML = html;
 
-      // Рисуем график
       drawModalChart(name, history);
     }
 
@@ -793,13 +785,11 @@
       const gap = W / 7;
       const barW = gap * 0.6;
 
-      // Линия цели
       const goalY = chartH - (cp.goal / maxVal) * chartH;
       ctx.strokeStyle = '#e74c3c'; ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(0, goalY); ctx.lineTo(W, goalY); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Столбики
       days.forEach((d, i) => {
         const x = i * gap + (gap - barW) / 2;
         const h = (d.value / maxVal) * chartH;
@@ -823,7 +813,7 @@
       const startT = document.getElementById('startTimeInput').value;
       const endT = document.getElementById('endTimeInput').value;
 
-      state.settings = { interval: minutes, startTime: startT, endTime: endT };
+      state.settings = { interval: minutes, startTime: startT, endTime: endT, remindersEnabled: true };
       await save();
 
       if (reminderInterval) clearInterval(reminderInterval);
@@ -846,9 +836,11 @@
       document.getElementById('stopReminders').style.display = 'block';
     };
 
-    document.getElementById('stopReminders').onclick = () => {
+    document.getElementById('stopReminders').onclick = async () => {
       if (reminderInterval) clearInterval(reminderInterval);
       reminderInterval = null;
+      state.settings.remindersEnabled = false;
+      await save();
       document.getElementById('status').textContent = 'Напоминания выключены';
       document.getElementById('status').className = 'status';
       document.getElementById('startReminders').style.display = 'block';
@@ -889,50 +881,57 @@
               document.getElementById('intervalInput').value = state.settings.interval || 60;
               document.getElementById('startTimeInput').value = state.settings.startTime || '08:00';
               document.getElementById('endTimeInput').value = state.settings.endTime || '22:00';
+
+              // Автоматически включаем напоминания, если они были включены
+              if (state.settings.remindersEnabled && !reminderInterval) {
+                const minutes = state.settings.interval;
+                const startT = state.settings.startTime;
+                const endT = state.settings.endTime;
+
+                reminderInterval = setInterval(() => {
+                  const now = new Date();
+                  const curMins = now.getHours() * 60 + now.getMinutes();
+                  const [sh, sm] = startT.split(':').map(Number);
+                  const [eh, em] = endT.split(':').map(Number);
+
+                  if (curMins >= (sh * 60 + sm) && curMins <= (eh * 60 + em)) {
+                    document.getElementById('waterPopup').style.display = 'flex';
+                    playSound();
+                  }
+                }, minutes * 60000);
+
+                document.getElementById('status').textContent = `✅ Напоминания каждые ${minutes} мин`;
+                document.getElementById('status').className = 'status on';
+                document.getElementById('startReminders').style.display = 'none';
+                document.getElementById('stopReminders').style.display = 'block';
+              }
             }
           }
         } else {
-          // Если документа в базе ещё нет — создаём его с дефолтными данными
           db.collection('waterApp').doc(user.uid).set(state).catch(err => {
             console.error("Ошибка создания документа:", err);
           });
         }
 
-        // Всегда обновляем интерфейс
         updateUI();
-        document.getElementById('loadingScreen').style.display = 'none'; // Скрываем загрузку
-        document.querySelector('.container').style.display = 'block';    // Показываем приложение
+        document.getElementById('loadingScreen').style.display = 'none';
+        document.querySelector('.container').style.display = 'block';
         setTimeout(() => { isSyncing = false; }, 500);
       }, (error) => {
         console.error("Ошибка Firestore (onSnapshot):", error);
       });
     }
 
-    // Вызываем startSync при входе пользователя
+    // Слушаем состояние авторизации (единый обработчик)
     auth.onAuthStateChanged(user => {
       if (user) {
         document.getElementById('authScreen').style.display = 'none';
-        document.querySelector('.container').style.display = 'block';
-        startSync(); // <--- Запускаем синхронизацию
+        startSync();
       } else {
         document.getElementById('authScreen').style.display = 'flex';
         document.querySelector('.container').style.display = 'none';
+        document.getElementById('loadingScreen').style.display = 'none';
         if (unsubscribeSnapshot) unsubscribeSnapshot();
-      }
-    });
-
-    // Убираем старый вызов init(), так как синхронизация теперь через Firestore
-    // init();
-
-    // Слушаем состояние авторизации
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        document.getElementById('authScreen').style.display = 'none';
-        document.querySelector('.container').style.display = 'block';
-        console.log("Пользователь вошел:", user.email || user.displayName || user.uid);
-      } else {
-        document.getElementById('authScreen').style.display = 'flex';
-        document.querySelector('.container').style.display = 'none';
       }
     });
 
@@ -944,13 +943,11 @@
         console.error("Ошибка входа:", error);
       });
     };
-
-    // init(); — удалено, так как теперь используется startSync() внутри auth.onAuthStateChanged
   </script>
 
   <audio id="notifySound" src="sound.mp3" preload="auto"></audio>
 
-  <!-- Красивое окно напоминания (Осталось прежним) -->
+  <!-- Красивое окно напоминания -->
   <div id="waterPopup"
     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
     <div
@@ -969,11 +966,9 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').then(reg => {
-          // Проверяем обновления каждые 10 минут
           setInterval(() => reg.update(), 10 * 60 * 1000);
         }).catch(err => console.log('SW registration failed:', err));
 
-        // Если найден новый Service Worker, перезагружаем страницу
         let refreshing;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (refreshing) return;
