@@ -875,6 +875,8 @@
               const cp = state.profiles[name];
               if (cp.history && cp.history[today] !== undefined) {
                 cp.drunk = cp.history[today];
+              } else {
+                cp.drunk = 0;
               }
             }
             if (state.settings) {
