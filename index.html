@@ -577,8 +577,8 @@
           if (!cp.timeline) cp.timeline = {};
           if (!cp.timeline[dateKey]) cp.timeline[dateKey] = [];
 
-          // Добавляем запись: время и сколько выпито
-          cp.timeline[dateKey].push({ time: timeString, amount: diff });
+          // Добавляем запись: время, сколько выпито и уникальный ID
+          cp.timeline[dateKey].push({ id: Date.now(), time: timeString, amount: diff });
         }
 
         cp.history[dateKey] = currentTotal;
@@ -656,7 +656,15 @@
         btn.onclick = (e) => {
           e.stopPropagation();
           if (confirm(`Сбросить прогресс для "${btn.dataset.name}"?`)) {
-            state.profiles[btn.dataset.name].drunk = 0;
+            const name = btn.dataset.name;
+            state.profiles[name].drunk = 0;
+            const today = todayKey();
+            if (state.profiles[name].timeline) {
+              state.profiles[name].timeline[today] = []; // Очищаем историю за сегодня
+            }
+            if (state.profiles[name].history) {
+              state.profiles[name].history[today] = 0;
+            }
             save(); updateUI();
           }
         };
@@ -743,9 +751,10 @@
         const dayEvents = timeline[key] || [];
         if (dayEvents.length > 0) {
           dayEvents.forEach(item => {
-            html += `<div style="display: flex; justify-content: space-between; padding: 5px 10px; font-size: 13px; color: #555;">
+            html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; font-size: 13px; color: #555;">
                        <span>⏱ ${item.time}</span> 
-                       <span style="color: #3498db; font-weight: bold;">+${item.amount} мл</span>
+                       <span style="color: #3498db; font-weight: bold; margin-left: auto; margin-right: 10px;">+${item.amount} мл</span>
+                       <span style="cursor: pointer; color: #e74c3c; font-weight: bold; font-size: 16px;" onclick="deleteEntry('${name}', '${key}', ${item.id})">✖</span>
                      </div>`;
           });
         } else {
@@ -764,6 +773,33 @@
       if (el) {
         el.style.display = el.style.display === 'none' ? 'block' : 'none';
       }
+    };
+
+    // Функция удаления отдельной записи
+    window.deleteEntry = async function (name, dateKey, id) {
+      if (!confirm("Удалить эту запись?")) return;
+
+      const cp = state.profiles[name];
+      if (!cp.timeline || !cp.timeline[dateKey]) return;
+
+      const entryIndex = cp.timeline[dateKey].findIndex(e => e.id === id);
+      if (entryIndex === -1) return;
+
+      const entry = cp.timeline[dateKey][entryIndex];
+      cp.timeline[dateKey].splice(entryIndex, 1);
+
+      // Вычитаем объем из общего счетчика
+      cp.drunk -= entry.amount;
+      if (cp.drunk < 0) cp.drunk = 0;
+
+      // Обновляем общий объем за этот день в history
+      cp.history[dateKey] = cp.drunk;
+
+      // Принудительно отключаем защиту от зацикливания, чтобы сохранить в базу
+      isSyncing = false;
+      await save();
+      updateUI();
+      openModal(name); // Перерисовываем окно
     };
 
     function closeModal() { document.getElementById('statsModal').style.display = 'none'; }
