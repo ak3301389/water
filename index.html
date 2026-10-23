@@ -474,8 +474,17 @@
   </div>
 
   <div class="container">
-    <h1>💧 Водный баланс</h1>
-    <p class="subtitle">Следите за водным балансом всей семьи</p>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+      <div>
+        <h1 style="text-align: left; margin-bottom: 4px;">💧 Водный баланс</h1>
+        <p class="subtitle" style="text-align: left;">Следите за водным балансом всей семьи</p>
+      </div>
+      <div style="text-align: right;">
+        <div id="userEmail" style="font-size: 12px; color: #7f8c8d; margin-bottom: 5px;"></div>
+        <button id="logoutBtn"
+          style="background: none; border: 1px solid #e74c3c; color: #e74c3c; padding: 4px 8px; border-radius: 6px; font-size: 12px; cursor: pointer;">Выйти</button>
+      </div>
+    </div>
     <div class="profiles-container" id="profilesContainer"></div>
     <div class="settings-panel">
       <label>Напоминание каждые (минут)</label>
@@ -967,14 +976,23 @@
     auth.onAuthStateChanged(user => {
       if (user) {
         document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('userEmail').textContent = user.email || 'Пользователь';
         startSync();
       } else {
         document.getElementById('authScreen').style.display = 'flex';
         document.querySelector('.container').style.display = 'none';
         document.getElementById('loadingScreen').style.display = 'none';
+        document.getElementById('userEmail').textContent = '';
         if (unsubscribeSnapshot) unsubscribeSnapshot();
       }
     });
+
+    // Обработчик кнопки выхода
+    document.getElementById('logoutBtn').onclick = () => {
+      if (confirm('Выйти из аккаунта?')) {
+        auth.signOut();
+      }
+    };
 
     document.getElementById('googleLoginBtn').onclick = () => {
       const provider = new firebase.auth.GoogleAuthProvider();
