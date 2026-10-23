@@ -560,9 +560,30 @@
     async function save() {
       if (isSyncing) return;
       state.lastUpdate = todayKey();
+
+      // Записываем историю с точным временем
+      const now = new Date();
+      const timeString = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      const dateKey = todayKey();
+
       for (const name in state.profiles) {
-        state.profiles[name].history[todayKey()] = state.profiles[name].drunk;
+        const cp = state.profiles[name];
+        const currentTotal = cp.drunk;
+        const lastTotal = cp.history[dateKey] || 0;
+
+        // Если объем увеличился, значит, был клик
+        if (currentTotal > lastTotal) {
+          const diff = currentTotal - lastTotal;
+          if (!cp.timeline) cp.timeline = {};
+          if (!cp.timeline[dateKey]) cp.timeline[dateKey] = [];
+
+          // Добавляем запись: время и сколько выпито
+          cp.timeline[dateKey].push({ time: timeString, amount: diff });
+        }
+
+        cp.history[dateKey] = currentTotal;
       }
+
       const user = auth.currentUser;
       if (user) {
         await db.collection('waterApp').doc(user.uid).set(state);
@@ -808,6 +829,8 @@
                 state.profiles[name].drunk = 0;
                 if (!state.profiles[name].history) state.profiles[name].history = {};
                 state.profiles[name].history[today] = 0;
+                if (!state.profiles[name].timeline) state.profiles[name].timeline = {};
+                state.profiles[name].timeline[today] = [];
               }
               state.lastUpdate = today;
               db.collection('waterApp').doc(user.uid).set(state);
@@ -887,6 +910,8 @@
         for (const name in state.profiles) {
           state.profiles[name].drunk = 0;
           state.profiles[name].history[currentDay] = 0;
+          if (!state.profiles[name].timeline) state.profiles[name].timeline = {};
+          state.profiles[name].timeline[currentDay] = [];
         }
         state.lastUpdate = currentDay;
         updateUI();
