@@ -523,10 +523,7 @@
     }
 
     const defaultState = {
-      profiles: {
-        "Кузя": { drunk: 0, goal: 2000, history: {} },
-        "Валюша": { drunk: 0, goal: 2000, history: {} }
-      },
+      profiles: {},
       settings: { interval: 60, startTime: '08:00', endTime: '22:00', remindersEnabled: false },
       lastUpdate: todayKey()
     };
@@ -895,6 +892,19 @@
           if (data && data.profiles) {
             state = data;
             const today = todayKey();
+
+            // Если профилей нет (новый пользователь) — спрашиваем имя
+            if (Object.keys(state.profiles).length === 0) {
+              const name = prompt("Как вас зовут?", "Пользователь");
+              if (name && name.trim() !== "") {
+                state.profiles[name.trim()] = { drunk: 0, goal: 2000, history: {} };
+                db.collection('waterApp').doc(user.uid).set(state);
+              } else {
+                // Если не ввели имя, создаем стандартный профиль
+                state.profiles["Пользователь"] = { drunk: 0, goal: 2000, history: {} };
+                db.collection('waterApp').doc(user.uid).set(state);
+              }
+            }
 
             if (!state.lastUpdate || state.lastUpdate !== today) {
               for (const name in state.profiles) {
