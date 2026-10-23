@@ -559,9 +559,9 @@
 
     async function save() {
       if (isSyncing) return;
+      isSyncing = true;
       state.lastUpdate = todayKey();
 
-      // Записываем историю с точным временем
       const now = new Date();
       const timeString = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
       const dateKey = todayKey();
@@ -571,23 +571,24 @@
         const currentTotal = cp.drunk;
         const lastTotal = cp.history[dateKey] || 0;
 
-        // Если объем увеличился, значит, был клик
         if (currentTotal > lastTotal) {
           const diff = currentTotal - lastTotal;
           if (!cp.timeline) cp.timeline = {};
           if (!cp.timeline[dateKey]) cp.timeline[dateKey] = [];
-
-          // Добавляем запись: время, сколько выпито и уникальный ID
           cp.timeline[dateKey].push({ id: Date.now(), time: timeString, amount: diff });
         }
-
         cp.history[dateKey] = currentTotal;
       }
 
       const user = auth.currentUser;
       if (user) {
-        await db.collection('waterApp').doc(user.uid).set(state);
+        try {
+          await db.collection('waterApp').doc(user.uid).set(state);
+        } catch (e) {
+          console.error("Ошибка сохранения:", e);
+        }
       }
+      setTimeout(() => { isSyncing = false; }, 1000);
     }
 
     function updateUI() {
@@ -632,7 +633,8 @@
         btn.onclick = (e) => {
           e.stopPropagation();
           state.profiles[btn.dataset.name].drunk += parseInt(btn.dataset.amount);
-          save(); updateUI();
+          updateUI();
+          save();
         };
       });
 
@@ -640,7 +642,8 @@
         btn.onclick = (e) => {
           e.stopPropagation();
           state.profiles[btn.dataset.name].drunk += Math.round(200 * 0.8);
-          save(); updateUI();
+          updateUI();
+          save();
         };
       });
 
@@ -648,7 +651,8 @@
         btn.onclick = (e) => {
           e.stopPropagation();
           state.profiles[btn.dataset.name].drunk += Math.round(300 * 0.9);
-          save(); updateUI();
+          updateUI();
+          save();
         };
       });
 
@@ -659,13 +663,10 @@
             const name = btn.dataset.name;
             state.profiles[name].drunk = 0;
             const today = todayKey();
-            if (state.profiles[name].timeline) {
-              state.profiles[name].timeline[today] = []; // Очищаем историю за сегодня
-            }
-            if (state.profiles[name].history) {
-              state.profiles[name].history[today] = 0;
-            }
-            save(); updateUI();
+            if (state.profiles[name].timeline) state.profiles[name].timeline[today] = [];
+            if (state.profiles[name].history) state.profiles[name].history[today] = 0;
+            updateUI();
+            save();
           }
         };
       });
@@ -708,7 +709,6 @@
       const history = cp.history || {};
       const timeline = cp.timeline || {};
 
-      // Считаем среднее за 7 дней
       let sum = 0, count = 0;
       for (let i = 0; i < 7; i++) {
         const d = new Date(); d.setDate(d.getDate() - i);
@@ -717,7 +717,6 @@
       }
       document.getElementById('modalAvg').textContent = count ? Math.round(sum / count) + ' мл' : '0 мл';
 
-      // Стрик
       let streak = 0;
       for (let i = 0; i < 30; i++) {
         const d = new Date(); d.setDate(d.getDate() - i);
@@ -728,7 +727,6 @@
       }
       document.getElementById('modalStreak').textContent = streak;
 
-      // Строим список дней
       const list = document.getElementById('modalHistoryList');
       let html = '';
 
@@ -739,13 +737,16 @@
         const label = i === 0 ? 'Сегодня' : (i === 1 ? 'Вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }));
         const color = val >= cp.goal ? '#27ae60' : (val > 0 ? '#3498db' : '#bdc3c7');
 
-        // Заголовок дня
-        html += `<div class="day-header" style="cursor: pointer; display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;" onclick="toggleDay('${key}')">
+        const hasDetails = timeline[key] && timeline[key].length > 0;
+        const arrow = hasDetails ? ' ▼' : '';
+        const cursor = hasDetails ? 'pointer' : 'default';
+        const onClick = hasDetails ? `onclick="toggleDay('${key}')"` : '';
+
+        html += `<div class="day-header" style="cursor: ${cursor}; display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;" ${onClick}>
                    <span>${label}</span> 
-                   <span style="color:${color}; font-weight:bold;">${val} мл ▼</span>
+                   <span style="color:${color}; font-weight:bold;">${val} мл${arrow}</span>
                  </div>`;
 
-        // Раскрывающийся список событий за этот день
         html += `<div id="details-${key}" style="display: none; padding-left: 10px; background: #fafafa; border-radius: 8px; margin-top: 5px; margin-bottom: 10px;">`;
 
         const dayEvents = timeline[key] || [];
@@ -758,7 +759,7 @@
                      </div>`;
           });
         } else {
-          html += `<div style="padding: 10px; color: #bdc3c7; font-size: 13px; text-align: center;">Нет деталей (выпито до обновления)</div>`;
+          html += `<div style="padding: 10px; color: #bdc3c7; font-size: 13px; text-align: center;">Нет деталей</div>`;
         }
         html += `</div>`;
       }
@@ -767,15 +768,11 @@
       drawModalChart(name, history);
     }
 
-    // Функция для открытия/закрытия списка
     window.toggleDay = function (dateKey) {
       const el = document.getElementById(`details-${dateKey}`);
-      if (el) {
-        el.style.display = el.style.display === 'none' ? 'block' : 'none';
-      }
+      if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
     };
 
-    // Функция удаления отдельной записи
     window.deleteEntry = async function (name, dateKey, id) {
       if (!confirm("Удалить эту запись?")) return;
 
@@ -788,18 +785,21 @@
       const entry = cp.timeline[dateKey][entryIndex];
       cp.timeline[dateKey].splice(entryIndex, 1);
 
-      // Вычитаем объем из общего счетчика
       cp.drunk -= entry.amount;
       if (cp.drunk < 0) cp.drunk = 0;
 
-      // Обновляем общий объем за этот день в history
-      cp.history[dateKey] = cp.drunk;
+      if (cp.timeline[dateKey]) {
+        cp.history[dateKey] = cp.timeline[dateKey].reduce((sum, item) => sum + item.amount, 0);
+        cp.drunk = cp.history[dateKey];
+      } else {
+        cp.history[dateKey] = 0;
+        cp.drunk = 0;
+      }
 
-      // Принудительно отключаем защиту от зацикливания, чтобы сохранить в базу
-      isSyncing = false;
-      await save();
       updateUI();
-      openModal(name); // Перерисовываем окно
+      openModal(name);
+      isSyncing = false;
+      save();
     };
 
     function closeModal() { document.getElementById('statsModal').style.display = 'none'; }
@@ -887,6 +887,7 @@
       const docRef = db.collection('waterApp').doc(user.uid);
 
       unsubscribeSnapshot = docRef.onSnapshot((doc) => {
+        if (isSyncing) return;
         isSyncing = true;
 
         if (doc.exists) {
@@ -895,7 +896,6 @@
             state = data;
             const today = todayKey();
 
-            // ЖЕЛЕЗОБЕТОННАЯ ЛОГИКА ОБНУЛЕНИЯ
             if (!state.lastUpdate || state.lastUpdate !== today) {
               for (const name in state.profiles) {
                 state.profiles[name].drunk = 0;
@@ -974,11 +974,9 @@
       });
     };
 
-    // МАГИЯ: Следим за временем каждую секунду. Если наступил новый день — обнуляем всё.
     setInterval(() => {
       const currentDay = todayKey();
       if (state.lastUpdate && state.lastUpdate !== currentDay) {
-        console.log("Смена суток. Обнуляем.");
         for (const name in state.profiles) {
           state.profiles[name].drunk = 0;
           state.profiles[name].history[currentDay] = 0;
